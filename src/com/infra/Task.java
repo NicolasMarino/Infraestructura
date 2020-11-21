@@ -5,6 +5,12 @@ public class Task {
     private Integer executionTime;
     private Resource resource;
 
+    public Task(String name, Integer executionTime, Resource resource) {
+        this.name = name;
+        this.executionTime = executionTime;
+        this.resource = resource;
+    }
+
     public String getName() {
         return name;
     }

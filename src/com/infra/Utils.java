@@ -18,6 +18,10 @@ public class Utils {
         return numero;
     }
 
+    public static void print(String message){
+        System.out.println(message);
+    }
+
     public boolean esNumero(String numero) {
         try {
             Integer.parseInt(numero);
@@ -28,20 +32,21 @@ public class Utils {
     }
 
     public int ingresoNumero(String mensaje) {
-        System.out.println(mensaje);
+        this.print(mensaje);
         String numero = input.nextLine();
         while (!(esNumero(numero))) {
             boolean num = true;
             if (numero.length() >= 10 && num) {
-                System.out.println("\033[31mIngrese un numero valido por favor (menos de 10 digitos).\u001B[0m");
+                this.print("\033[31mIngrese un numero valido por favor (menos de 10 digitos).\u001B[0m");
                 num = false;
             }
             if (num) {
-                System.out.println("\033[31mIngrese solo numeros\u001B[0m");
+                this.print("\033[31mIngrese solo numeros\u001B[0m");
 
             }
             numero = input.nextLine();
         }
         return Integer.parseInt(numero);
     }
+
 }
