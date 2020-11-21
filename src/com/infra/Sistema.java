@@ -54,34 +54,84 @@ public class Sistema {
 
         User user = USERS_LIST.stream().filter(u -> "Santiago".equals(u.getName())).findFirst().get();
 
-        Task readWordTask = new Task("Leer archivo word", 1, listOfResources.stream().filter(e -> "Ram".equals(e.getName())).findFirst().get());
-        Task printWordTask = new Task("Imprimir archivo word", 2, listOfResources.stream().filter(e -> "Printer".equals(e.getName())).findFirst().get());
-        Process printWordDocumentProcess = new Process("Imprimir documento word", Status.AVAILABLE, 3, Arrays.asList(readWordTask, printWordTask), Permissions.TO_PRINT);
+        Task readWordTask = new Task("Leer archivo word", 1, getResourceByName("Ram"));
+        Task printWordTask = new Task("Imprimir archivo word", 2, getResourceByName("Printer"));
+        Process printWordProcess = new Process("Imprimir documento word", Status.AVAILABLE, 3, Arrays.asList(readWordTask, printWordTask), Permissions.TO_PRINT);
 
-        Task readExcelTask = new Task("Leer archivo excel", 2, listOfResources.stream().filter(e -> "Ram".equals(e.getName())).findFirst().get());
-        Task printExcelTask = new Task("Imprimir archivo excel", 3, listOfResources.stream().filter(e -> "Printer".equals(e.getName())).findFirst().get());
-        Process printExcelDocumentProcess = new Process("Imprimir documento excel", Status.AVAILABLE, 5, Arrays.asList(readExcelTask, printExcelTask), Permissions.TO_PRINT);
+        Task readExcelTask = new Task("Leer archivo excel", 1, getResourceByName("Ram"));
+        Task printExcelTask = new Task("Imprimir archivo excel", 3, getResourceByName("Printer"));
+        Process printExcelProcess = new Process("Imprimir documento excel", Status.AVAILABLE, 5, Arrays.asList(readExcelTask, printExcelTask), Permissions.TO_PRINT);
 
-        Program wordProgram = new Program("Word", Arrays.asList(printWordDocumentProcess));
+        Program wordProgram = new Program("Word", Arrays.asList(printWordProcess));
 
-        Program excelProgram = new Program("Excel", Arrays.asList(printExcelDocumentProcess));
+        Program excelProgram = new Program("Excel", Arrays.asList(printExcelProcess));
 
-        printWordDocumentProcess.run(user);
-        printExcelDocumentProcess.run(user);
 
-        if(validatePermissions(printWordDocumentProcess, wordProgram, user) && validatePermissions(printExcelDocumentProcess, excelProgram, user)){
+        if (validatePermissions(printWordProcess, wordProgram, user) && validatePermissions(printExcelProcess, excelProgram, user)) {
 
+            printWordProcess.run(user);
+            Utils.print(String.format("El usuario %s está ejecutando el proceso %s", user.getName(), printWordProcess.getName()));
+
+            printExcelProcess.run(user);
+            Utils.print(String.format("El usuario %s está ejecutando el proceso %s", user.getName(), printExcelProcess.getName()));
+
+
+            if(askAndGivePermissionResource(user, printWordProcess, getResourceByName("Ram"))){
+                printWordProcess.setActualResource(printWordProcess.getTaskById(0).getResource());
+                Utils.print(String.format("Ejecutando tarea %s por el usuario %s", printWordProcess.getTaskById(0).getName(), user.getName()));
+            };
+
+            if(askAndGivePermissionResource(user, printExcelProcess, getResourceByName("Ram"))){
+                printWordProcess.setActualResource(printExcelProcess.getTaskById(0).getResource());
+                Utils.print(String.format("Ejecutando tarea %s por el usuario %s", printExcelProcess.getTaskById(0).getName(), user.getName()));
+            };
+
+            giveBackResource(printWordProcess,printWordProcess.getTaskById(0));
+            giveBackResource(printExcelProcess,printExcelProcess.getTaskById(0));
+
+
+            if(askAndGivePermissionResource(user, printWordProcess, getResourceByName("Printer"))){
+                printWordProcess.setActualResource(printWordProcess.getTaskById(0).getResource());
+                printWordProcess.getTaskById(1).getResource().setStatus(Status.RUNNING);
+                Utils.print(String.format("Ejecutando tarea %s por el usuario %s", printWordProcess.getTaskById(1).getName(), user.getName()));
+            };
+
+            askAndGivePermissionResource(user, printExcelProcess, getResourceByName("Printer"));
+
+            printWordProcess.terminate();
+            printExcelProcess.terminate();
         };
     }
 
-    private boolean validatePermissions(Process process, Program program, User user){
+    private boolean askAndGivePermissionResource(User user, Process process, Resource resource) {
+        Utils.print(String.format("Usuario %s pide acceso al recurso %s", user.getName(), resource.getName()));
+
+        if (process.getActualResource() == null && resource.isAvailable()) {
+            Utils.print(String.format("Usuario %s obtiene acceso al recurso %s", user.getName(), resource.getName()));
+            return true;
+        } else {
+            Utils.print(String.format("Usuario %s no puede acceso al recurso %s dado el proceso se encuentra utilizando el mismo.", user.getName(), resource.getName()));
+            return false;
+        }
+    }
+
+    private void giveBackResource(Process process,Task task){
+        process.giveBackResource();
+        Utils.print(String.format("El proceso %s terminó de ejecutar la tarea %s", process.getName(), task.getName()));
+    }
+
+    private Resource getResourceByName(String name){
+        return RESOURCE_LIST.stream().filter(e -> name.equals(e.getName())).findFirst().get();
+    }
+
+    private boolean validatePermissions(Process process, Program program, User user) {
         boolean isValid = true;
         if (process.validateActionPermission(user)) {
             if (process.validateResourcesPermission(user)) {
                 Utils.print(String.format("Se crea el proceso %s referido al programa %s pertenenciente al usuario %s", process.getName(), program.getName(),
                         user.getName()));
             } else {
-                Utils.print(String.format("El usuario %s no tiene permisos sobre el recurso %s", user.getName(), process.getName()));
+                Utils.print(String.format("El usuario %s no tiene permisos sobre el recurso.", user.getName()));
                 isValid = false;
             }
         } else {

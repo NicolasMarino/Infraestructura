@@ -11,6 +11,7 @@ public class Process {
     private Integer executionTimeout;
     private List<Task> taskList;
     private Permissions permission;
+    private Resource actualResource;
 
     public Process(String name, Status status, Integer executionTimeout, List<Task> taskList, Permissions permission) {
         this.name = name;
@@ -72,8 +73,19 @@ public class Process {
         return Status.LOCKED.equals(this.status);
     }
 
+    public Resource getActualResource() {
+        return actualResource;
+    }
+
+    public void setActualResource(Resource actualResource) {
+        this.actualResource = actualResource;
+    }
+
+    public Task getTaskById(Integer pos){
+        return this.getTaskList().get(pos);
+    }
+
     public void run(User user){
-        Utils.print(String.format("El usuario %s está ejecutando el proceso %s", user.getName(), this.getName()));
         this.setStatus(Status.RUNNING);
     }
 
@@ -84,9 +96,13 @@ public class Process {
     public boolean validateActionPermission(User user){
         return user.getRole().getPermissionActionList().contains(this.getPermission());
     }
-
+    //ToDo: Hacer granular este método y devolver en que recurso no tuvo permiso.
     public boolean validateResourcesPermission(User user){
         return user.getRole().getPermissionResourceList().containsAll(this.getTaskList().stream().map(Task::getResource).collect(Collectors.toList()));
+    }
+
+    public void giveBackResource(){
+        this.setActualResource(null);
     }
 
 }
