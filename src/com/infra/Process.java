@@ -2,6 +2,7 @@ package com.infra;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Process {
 
@@ -81,12 +82,11 @@ public class Process {
     }
 
     public boolean validateActionPermission(User user){
-        return user.getRole().getPermissionList().contains(this.getPermission());
+        return user.getRole().getPermissionActionList().contains(this.getPermission());
     }
 
     public boolean validateResourcesPermission(User user){
-
-        return user.getRole().getPermissionList().containsAll();
+        return user.getRole().getPermissionResourceList().containsAll(this.getTaskList().stream().map(Task::getResource).collect(Collectors.toList()));
     }
 
 }
