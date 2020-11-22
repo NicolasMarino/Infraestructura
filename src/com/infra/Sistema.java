@@ -92,6 +92,8 @@ public class Sistema {
             notifyExecutionStatus(printWordProcess, printWordProcess.getTaskById(1), false, user);
 
             executeTask(user, printExcelProcess, getResourceByName("Printer"), 1);
+            giveBackResource(printExcelProcess, printExcelProcess.getTaskById(1));
+
             printExcelProcess.giveBackResource();
             printExcelProcess.terminate();
             notifyExecutionStatus(printExcelProcess, printExcelProcess.getTaskById(1), false, user);
@@ -101,7 +103,6 @@ public class Sistema {
             killProcess(printWordProcess, printWordTask, "Permisos");
         }
         utils.print("=== Exclusión mutua finalizada ===");
-        ;
     }
 
     private void deadlock(){
@@ -185,7 +186,7 @@ public class Sistema {
             killProcess(printWordProcess, printWordTask, "Permisos");
 
         }
-        utils.print("=== Chequeo de permisos finalizado ===");
+        Utils.print("=== Chequeo de permisos finalizado ===");
     }
 
     private void executeTask(User user, Process process, Resource resource, Integer taskId) {
