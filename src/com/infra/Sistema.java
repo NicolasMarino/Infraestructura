@@ -15,13 +15,14 @@ public class Sistema {
     public void menu() throws ClassNotFoundException {
         int opcion;
         do {
-            utils.print("\n1. Exclusión mutua \n2. Opcion \n3. Opcion \n4. Opcion \n5. Fin\n");
+            utils.print("\n1. Exclusión mutua \n2. Deadlock \n3. Opcion \n4. Opcion \n5. Fin\n");
             opcion = utils.leerNumeroEntre("Ingrese una opcion", 1, 5, "\033[31mIngrese un número entre 1 y 4\u001B[0m");
             switch (opcion) {
                 case 1:
                     mutualExclusion();
                     break;
                 case 2:
+                    deadlock();
                     break;
                 case 3:
                     break;
@@ -99,6 +100,51 @@ public class Sistema {
         ;
     }
 
+    private void deadlock(){
+        utils.print("=== Deadlock iniciado ===");
+
+        List<Resource> listOfResources = this.RESOURCE_LIST;
+
+        User user = USERS_LIST.stream().filter(u -> "Santiago".equals(u.getName())).findFirst().get();
+
+        Task readWordTask = new Task("Leer archivo word", 1, getResourceByName("Ram"));
+        Task printWordTask = new Task("Imprimir archivo word", 2, getResourceByName("Printer"));
+        Process printWordProcess = new Process("Imprimir documento word", Status.AVAILABLE, 3, Arrays.asList(readWordTask, printWordTask), Permissions.TO_PRINT);
+
+        Task readExcelTask = new Task("Leer archivo excel", 1, getResourceByName("Ram"));
+        Task printExcelTask = new Task("Imprimir archivo excel", 3, getResourceByName("Printer"));
+        Process printExcelProcess = new Process("Imprimir documento excel", Status.AVAILABLE, 5, Arrays.asList(readExcelTask, printExcelTask), Permissions.TO_PRINT);
+
+        Program wordProgram = new Program("Word", Arrays.asList(printWordProcess));
+        Program excelProgram = new Program("Excel", Arrays.asList(printExcelProcess));
+
+
+        if (validatePermissions(printWordProcess, wordProgram, user) && validatePermissions(printExcelProcess, excelProgram, user)) {
+            printWordProcess.run(user);
+            notifyExecutionStatus(printWordProcess, printWordProcess.getTaskById(0), true, user);
+
+            printExcelProcess.run(user);
+            notifyExecutionStatus(printExcelProcess, printExcelProcess.getTaskById(0), true, user);
+
+            executeTask(user, printWordProcess, getResourceByName("Ram"), 0);
+            executeTask(user, printExcelProcess, getResourceByName("Ram"), 0);
+
+            giveBackResource(printWordProcess, printWordProcess.getTaskById(0));
+            giveBackResource(printExcelProcess, printExcelProcess.getTaskById(0));
+
+            executeTask(user, printWordProcess, getResourceByName("Printer"), 1);
+            executeTask(user, printExcelProcess, getResourceByName("Printer"), 1);
+
+            printWordProcess.getActualResource().setStatus(Status.AVAILABLE);
+            printWordProcess.giveBackResource();
+            printWordProcess.terminate();
+            notifyExecutionStatus(printWordProcess, printWordProcess.getTaskById(1), false, user);
+
+            killProcess(printExcelProcess, printExcelProcess.getTaskById(1));
+            utils.print("=== Deadlock finalizado ===");
+        }
+    }
+
     private void executeTask(User user, Process process, Resource resource, Integer taskId) {
         if (isTimeExceeded(process, process.getTaskById(taskId))) {
             if (askAndGivePermissionResource(user, process, process.getTaskById(taskId))) {
@@ -169,5 +215,10 @@ public class Sistema {
             isValid = false;
         }
         return isValid;
+    }
+
+    private void killProcess(Process process, Task task){
+        process.terminate();
+        Utils.print(String.format("El proceso %s no pudo ejecutar la tarea %s, por lo que fue cancelado.", process.getName(), task.getName()));
     }
 }
