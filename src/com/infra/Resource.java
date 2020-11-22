@@ -29,6 +29,7 @@ public class Resource {
         this.status = status;
     }
 
+    // TODO: Implementar que un recurso peuda usarse por mas de uno a la vez.
     public Boolean getShared() {
         return shared;
     }
