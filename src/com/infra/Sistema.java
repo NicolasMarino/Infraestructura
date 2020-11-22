@@ -2,6 +2,7 @@ package com.infra;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class Sistema {
@@ -33,8 +34,9 @@ public class Sistema {
         } while (opcion != 5);
     }
 
-    private final List<Resource> RESOURCE_LIST = Arrays.asList(new Resource("Printer"), new Resource("Camera"), new Resource("Monitor"),
-            new Resource("Speakers"), new Resource("Hdd"), new Resource("Ram"));
+    private final List<Resource> RESOURCE_LIST = Arrays.asList(new Resource("Printer", false), new Resource("Camera", false),
+            new Resource("Monitor", true), new Resource("Speakers", true),
+            new Resource("Hdd", true), new Resource("Ram", true));
 
     private final List<Role> ROLE_LIST = Arrays.asList(
             new Role("Admin", Arrays.asList(Permissions.READ, Permissions.TO_PRINT, Permissions.WRITE), RESOURCE_LIST),
@@ -63,79 +65,87 @@ public class Sistema {
         Process printExcelProcess = new Process("Imprimir documento excel", Status.AVAILABLE, 5, Arrays.asList(readExcelTask, printExcelTask), Permissions.TO_PRINT);
 
         Program wordProgram = new Program("Word", Arrays.asList(printWordProcess));
-
         Program excelProgram = new Program("Excel", Arrays.asList(printExcelProcess));
 
 
         if (validatePermissions(printWordProcess, wordProgram, user) && validatePermissions(printExcelProcess, excelProgram, user)) {
-
             printWordProcess.run(user);
             Utils.print(String.format("El usuario %s está ejecutando el proceso %s", user.getName(), printWordProcess.getName()));
 
             printExcelProcess.run(user);
             Utils.print(String.format("El usuario %s está ejecutando el proceso %s", user.getName(), printExcelProcess.getName()));
 
+            executeTask(user, printWordProcess, getResourceByName("Ram"), 0);
+            executeTask(user, printExcelProcess, getResourceByName("Ram"), 0);
 
-            if(askAndGivePermissionResource(user, printWordProcess, getResourceByName("Ram"))){
-                printWordProcess.setActualResource(printWordProcess.getTaskById(0).getResource());
-                Utils.print(String.format("Ejecutando tarea %s por el usuario %s", printWordProcess.getTaskById(0).getName(), user.getName()));
-            };
+            giveBackResource(printWordProcess, printWordProcess.getTaskById(0));
+            giveBackResource(printExcelProcess, printExcelProcess.getTaskById(0));
 
-            if(askAndGivePermissionResource(user, printExcelProcess, getResourceByName("Ram"))){
-                printWordProcess.setActualResource(printExcelProcess.getTaskById(0).getResource());
-                Utils.print(String.format("Ejecutando tarea %s por el usuario %s", printExcelProcess.getTaskById(0).getName(), user.getName()));
-            };
-
-            giveBackResource(printWordProcess,printWordProcess.getTaskById(0));
-            giveBackResource(printExcelProcess,printExcelProcess.getTaskById(0));
-
-
-            if(askAndGivePermissionResource(user, printWordProcess, getResourceByName("Printer"))){
-                printWordProcess.setActualResource(printWordProcess.getTaskById(0).getResource());
-                printWordProcess.getTaskById(1).getResource().setStatus(Status.RUNNING);
-                Utils.print(String.format("Ejecutando tarea %s por el usuario %s", printWordProcess.getTaskById(1).getName(), user.getName()));
-            };
-
-            askAndGivePermissionResource(user, printExcelProcess, getResourceByName("Printer"));
+            executeTask(user, printWordProcess, getResourceByName("Printer"), 1);
+            executeTask(user, printExcelProcess, getResourceByName("Printer"), 1);
 
             printWordProcess.terminate();
             printExcelProcess.terminate();
-        };
+        }
+        ;
     }
 
-    private boolean askAndGivePermissionResource(User user, Process process, Resource resource) {
-        Utils.print(String.format("Usuario %s pide acceso al recurso %s", user.getName(), resource.getName()));
+    private void executeTask(User user, Process process, Resource resource, Integer taskId) {
+        if (isTimeExceeded(process, process.getTaskById(taskId))) {
+            if (askAndGivePermissionResource(user, process, process.getTaskById(taskId))) {
+                process.setActualResource(process.getTaskById(taskId).getResource());
+                process.getTaskById(taskId).getResource().setStatus(Status.RUNNING);
+                Utils.print(String.format("Ejecutando tarea %s por el usuario %s", process.getTaskById(taskId).getName(), user.getName()));
+            }
+        } else {
+            giveBackResource(process, process.getTaskById(taskId));
+            Utils.print("Error de timeout");
+        }
+    }
 
-        if (process.getActualResource() == null && resource.isAvailable()) {
-            Utils.print(String.format("Usuario %s obtiene acceso al recurso %s", user.getName(), resource.getName()));
+    private boolean isTimeExceeded(Process process, Task task) {
+        if (!(process.getAvailableTimeout() - task.getExecutionTime() < 0)) {
+            process.setAvailableTimeout(process.getAvailableTimeout() - task.getExecutionTime());
             return true;
         } else {
-            Utils.print(String.format("Usuario %s no puede acceso al recurso %s dado el proceso se encuentra utilizando el mismo.", user.getName(), resource.getName()));
             return false;
         }
     }
 
-    private void giveBackResource(Process process,Task task){
+    private boolean askAndGivePermissionResource(User user, Process process, Task task) {
+        Utils.print(String.format("Usuario %s pide acceso al recurso %s", user.getName(), task.getResource().getName()));
+        if (process.getActualResource() == null && task.getResource().isAvailable()) {
+            Utils.print(String.format("Usuario %s obtiene acceso al recurso %s", user.getName(), task.getResource().getName()));
+            return true;
+        } else {
+            Utils.print(String.format("Usuario %s no puede acceso al recurso %s dado el proceso se encuentra utilizando el mismo.", user.getName(), task.getResource().getName()));
+            return false;
+        }
+    }
+
+    private void giveBackResource(Process process, Task task) {
         process.giveBackResource();
+        task.getResource().setStatus(Status.AVAILABLE);
         Utils.print(String.format("El proceso %s terminó de ejecutar la tarea %s", process.getName(), task.getName()));
     }
 
-    private Resource getResourceByName(String name){
+    private Resource getResourceByName(String name) {
         return RESOURCE_LIST.stream().filter(e -> name.equals(e.getName())).findFirst().get();
     }
 
     private boolean validatePermissions(Process process, Program program, User user) {
         boolean isValid = true;
         if (process.validateActionPermission(user)) {
-            if (process.validateResourcesPermission(user)) {
+            String errorMessageResource = process.validateResourcesPermission(user).get(false);
+            if (errorMessageResource == null) {
                 Utils.print(String.format("Se crea el proceso %s referido al programa %s pertenenciente al usuario %s", process.getName(), program.getName(),
                         user.getName()));
             } else {
-                Utils.print(String.format("El usuario %s no tiene permisos sobre el recurso.", user.getName()));
+                Utils.print(String.format("El usuario %s no tiene permisos sobre el recurso %s.", user.getName(), errorMessageResource));
                 isValid = false;
             }
         } else {
-            Utils.print(String.format("El usuario %s no tiene permisos sobre el recurso %s", user.getName(), process.getName()));
+            Utils.print(String.format("El usuario %s no tiene permisos sobre el proceso %s", user.getName(), process.getName()));
             isValid = false;
         }
         return isValid;

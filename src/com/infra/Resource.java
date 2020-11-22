@@ -5,9 +5,11 @@ import java.util.Objects;
 public class Resource {
     private String name;
     private Status status;
+    private Boolean shared;
 
-    public Resource(String name) {
+    public Resource(String name, Boolean shared) {
         this.name = name;
+        this.shared = shared;
         this.status = Status.AVAILABLE;
     }
 
@@ -25,6 +27,14 @@ public class Resource {
 
     public void setStatus(Status status) {
         this.status = status;
+    }
+
+    public Boolean getShared() {
+        return shared;
+    }
+
+    public void setShared(Boolean shared) {
+        this.shared = shared;
     }
 
     public boolean isAvailable(){
