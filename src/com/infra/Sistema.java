@@ -15,8 +15,8 @@ public class Sistema {
     public void menu() throws ClassNotFoundException {
         int opcion;
         do {
-            utils.print("\n1. Exclusión mutua \n2. Deadlock \n3. Chequeo de permisos \n4. Opcion \n5. Fin\n");
-            opcion = utils.leerNumeroEntre("Ingrese una opcion", 1, 5, "\033[31mIngrese un número entre 1 y 4\u001B[0m");
+            Utils.print("\n1. Exclusión mutua \n2. Deadlock \n3. Chequeo de permisos \n4. Ejecución satisfactoria \n5. Tiempo de ejecución  \n6. Fin\n");
+            opcion = utils.leerNumeroEntre("Ingrese una opcion", 1, 6, "\033[31mIngrese un número entre 1 y 4\u001B[0m");
             switch (opcion) {
                 case 1:
                     mutualExclusion();
@@ -28,8 +28,12 @@ public class Sistema {
                     permissionsCheck();
                     break;
                 case 4:
+                    successfulExecution();
                     break;
                 case 5:
+                    timeoutExecution();
+                    break;
+                case 6:
                     System.out.println("Hasta luego!");
                     break;
             }
@@ -98,14 +102,13 @@ public class Sistema {
             printExcelProcess.terminate();
             notifyExecutionStatus(printExcelProcess, printExcelProcess.getTaskById(1), false, user);
 
-
-        }else{
+        } else {
             killProcess(printWordProcess, printWordTask, "Permisos");
         }
         utils.print("=== Exclusión mutua finalizada ===");
     }
 
-    private void deadlock(){
+    private void deadlock() {
         utils.print("=== Deadlock iniciado ===");
 
         List<Resource> listOfResources = this.RESOURCE_LIST;
@@ -147,14 +150,14 @@ public class Sistema {
 
             killProcess(printExcelProcess, printExcelProcess.getTaskById(1), "Deadlock");
 
-        }else{
+        } else {
             killProcess(printWordProcess, printWordTask, "Permisos");
         }
         utils.print("=== Deadlock finalizado ===");
     }
 
-    private void permissionsCheck(){
-        utils.print("=== Chequeo de permisos iniciado ===");
+    private void permissionsCheck() {
+        Utils.print("=== Chequeo de permisos iniciado ===");
 
         List<Resource> listOfResources = this.RESOURCE_LIST;
 
@@ -182,11 +185,88 @@ public class Sistema {
             notifyExecutionStatus(printWordProcess, printWordProcess.getTaskById(1), false, user);
 
 
-        } else{
+        } else {
             killProcess(printWordProcess, printWordTask, "Permisos");
 
         }
         Utils.print("=== Chequeo de permisos finalizado ===");
+    }
+
+    private void successfulExecution() {
+        Utils.print("=== Ejecución satisfactoria iniciando ===");
+
+        List<Resource> listOfResources = this.RESOURCE_LIST;
+
+        User user = USERS_LIST.stream().filter(u -> "Roberta".equals(u.getName())).findFirst().get();
+
+        Task viewVideoTask = new Task("Ver video", 1, getResourceByName("Monitor"));
+        Task listenVideoTask = new Task("Escuchar video", 2, getResourceByName("Speakers"));
+        Process videoPlayerProcess = new Process("Reproducir video", Status.AVAILABLE, 3, Arrays.asList(viewVideoTask, listenVideoTask), Permissions.READ);
+
+        Program videoPlayerProgram = new Program("Video Player", Arrays.asList(videoPlayerProcess));
+
+        if (validatePermissions(videoPlayerProcess, videoPlayerProgram, user)) {
+            videoPlayerProcess.run(user);
+            notifyExecutionStatus(videoPlayerProcess, videoPlayerProcess.getTaskById(0), true, user);
+
+            executeTask(user, videoPlayerProcess, getResourceByName("Ram"), 0);
+
+            giveBackResource(videoPlayerProcess, videoPlayerProcess.getTaskById(0));
+
+            executeTask(user, videoPlayerProcess, getResourceByName("Printer"), 1);
+
+            giveBackResource(videoPlayerProcess, videoPlayerProcess.getTaskById(1));
+
+            videoPlayerProcess.getActualResource().setStatus(Status.AVAILABLE);
+            videoPlayerProcess.giveBackResource();
+            videoPlayerProcess.terminate();
+            notifyExecutionStatus(videoPlayerProcess, videoPlayerProcess.getTaskById(1), false, user);
+
+
+        } else {
+            killProcess(videoPlayerProcess, viewVideoTask, "Permisos");
+        }
+
+        Utils.print("=== Ejecución satisfactoria finalizando ===");
+    }
+
+    private void timeoutExecution() {
+        Utils.print("=== Timeout iniciando ===");
+
+        List<Resource> listOfResources = this.RESOURCE_LIST;
+
+        User user = USERS_LIST.stream().filter(u -> "Roberta".equals(u.getName())).findFirst().get();
+
+        Task viewVideoTask = new Task("Ver video", 1, getResourceByName("Monitor"));
+        Task listenVideoTask = new Task("Escuchar video", 2, getResourceByName("Speakers"));
+        Process videoPlayerProcess = new Process("Reproducir video", Status.AVAILABLE, 2, Arrays.asList(viewVideoTask, listenVideoTask), Permissions.READ);
+
+        Program videoPlayerProgram = new Program("Video Player", Arrays.asList(videoPlayerProcess));
+
+        if (validatePermissions(videoPlayerProcess, videoPlayerProgram, user)) {
+            videoPlayerProcess.run(user);
+            notifyExecutionStatus(videoPlayerProcess, videoPlayerProcess.getTaskById(0), true, user);
+
+            executeTask(user, videoPlayerProcess, getResourceByName("Ram"), 0);
+
+            giveBackResource(videoPlayerProcess, videoPlayerProcess.getTaskById(0));
+
+            executeTask(user, videoPlayerProcess, getResourceByName("Printer"), 1);
+
+            videoPlayerProcess.setAvailableTimeout(videoPlayerProcess.getExecutionTimeout());
+            executeTask(user, videoPlayerProcess, getResourceByName("Printer"), 1);
+
+            if (videoPlayerProcess.getActualResource() != null) {
+                videoPlayerProcess.getActualResource().setStatus(Status.AVAILABLE);
+            }
+            videoPlayerProcess.giveBackResource();
+            videoPlayerProcess.terminate();
+            notifyExecutionStatus(videoPlayerProcess, videoPlayerProcess.getTaskById(1), false, user);
+        } else {
+            killProcess(videoPlayerProcess, viewVideoTask, "Permisos");
+        }
+
+        Utils.print("=== Timeout finalizando ===");
     }
 
     private void executeTask(User user, Process process, Resource resource, Integer taskId) {
@@ -198,8 +278,7 @@ public class Sistema {
                 process.setAvailableTimeout(process.getAvailableTimeout() - process.getTaskById(taskId).getExecutionTime());
             }
         } else {
-            giveBackResource(process, process.getTaskById(taskId));
-            Utils.print("Error de timeout");
+            Utils.print(String.format("Error de timeout en la tarea %s del proceso %s ejecutado por el usuario %s.", process.getTaskById(taskId).getName(), process.getName(), user.getName()));
         }
     }
 
@@ -228,12 +307,12 @@ public class Sistema {
         Utils.print(String.format("El proceso %s terminó de ejecutar la tarea %s.", process.getName(), task.getName()));
     }
 
-    private void notifyExecutionStatus(Process process, Task task, Boolean starting, User user){
+    private void notifyExecutionStatus(Process process, Task task, Boolean starting, User user) {
         String word = "terminó de";
-        if(starting){
+        if (starting) {
             word = "empezó a";
         }
-        if(process.getActualResource() == null){
+        if (process.getActualResource() == null) {
             Utils.print(String.format("El proceso %s %s ejecutar la tarea %s por el usuario %s.", process.getName(), word, task.getName(), user.getName()));
         }
     }
@@ -260,7 +339,7 @@ public class Sistema {
         return isValid;
     }
 
-    private void killProcess(Process process, Task task, String reason){
+    private void killProcess(Process process, Task task, String reason) {
         process.terminate();
         Utils.print(String.format("El proceso %s no pudo ejecutar la tarea (%s) %s, por lo que fue cancelado.", process.getName(), reason, task.getName()));
     }
