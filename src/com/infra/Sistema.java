@@ -15,8 +15,9 @@ public class Sistema {
     public void menu() throws ClassNotFoundException {
         int opcion;
         do {
-            Utils.print("\n1. Exclusión mutua \n2. Deadlock \n3. Chequeo de permisos \n4. Ejecución satisfactoria \n5. Tiempo de ejecución  \n6. Fin\n");
-            opcion = utils.leerNumeroEntre("Ingrese una opcion", 1, 6, "\033[31mIngrese un número entre 1 y 4\u001B[0m");
+            Utils.print("\n1. Exclusión mutua \n2. Deadlock \n3. Chequeo de permisos a nivel de programa \n4. Chequeo de permisos a nivel de programa " +
+                    "\n5. Ejecución satisfactoria \n6. Tiempo de ejecución  \n7. Fin\n");
+            opcion = utils.leerNumeroEntre("Ingrese una opcion", 1, 7, "\033[31mIngrese un número entre 1 y 7\u001B[0m");
             switch (opcion) {
                 case 1:
                     mutualExclusion();
@@ -25,19 +26,22 @@ public class Sistema {
                     deadlock();
                     break;
                 case 3:
-                    permissionsCheck();
+                    permissionsProgramCheck();
                     break;
                 case 4:
-                    successfulExecution();
+                    permissionsByResourceCheck();
                     break;
                 case 5:
-                    timeoutExecution();
+                    successfulExecution();
                     break;
                 case 6:
+                    timeoutExecution();
+                    break;
+                case 7:
                     System.out.println("Hasta luego!");
                     break;
             }
-        } while (opcion != 5);
+        } while (opcion != 7);
     }
 
     private final List<Resource> RESOURCE_LIST = Arrays.asList(new Resource("Printer", false), new Resource("Camera", false),
@@ -156,8 +160,8 @@ public class Sistema {
         utils.print("=== Deadlock finalizado ===");
     }
 
-    private void permissionsCheck() {
-        Utils.print("=== Chequeo de permisos iniciado ===");
+    private void permissionsProgramCheck() {
+        Utils.print("=== Chequeo de permisos por programa iniciado ===");
 
         List<Resource> listOfResources = this.RESOURCE_LIST;
 
@@ -189,7 +193,29 @@ public class Sistema {
             killProcess(printWordProcess, printWordTask, "Permisos");
 
         }
-        Utils.print("=== Chequeo de permisos finalizado ===");
+        Utils.print("=== Chequeo de permisos por programa finalizado ===");
+    }
+
+    private void permissionsByResourceCheck() {
+        Utils.print("=== Chequeo de permisos por recurso iniciado ===");
+
+        List<Resource> listOfResources = this.RESOURCE_LIST;
+
+        User user = USERS_LIST.stream().filter(u -> "Roberta".equals(u.getName())).findFirst().get();
+
+        Task takePictureTask = new Task("Sacar foto", 2, getResourceByName("Camera"));
+        Task savePictureTasl = new Task("Abrir WebCamToy", 1, getResourceByName("Ram"));
+        Process webCamToyTakePictureProcess = new Process("Take and save picture", Status.AVAILABLE, 3, Arrays.asList(takePictureTask, savePictureTasl), Permissions.READ);
+
+        Program webCamToyProgram = new Program("WebCamToy", Arrays.asList(webCamToyTakePictureProcess));
+
+        if (validatePermissions(webCamToyTakePictureProcess, webCamToyProgram, user)) {
+            webCamToyTakePictureProcess.run(user);
+        } else {
+            killProcess(webCamToyTakePictureProcess, takePictureTask, "Permisos");
+
+        }
+        Utils.print("=== Chequeo de permisos por recurso finalizado ===");
     }
 
     private void successfulExecution() {
@@ -217,7 +243,6 @@ public class Sistema {
 
             giveBackResource(videoPlayerProcess, videoPlayerProcess.getTaskById(1));
 
-            videoPlayerProcess.getActualResource().setStatus(Status.AVAILABLE);
             videoPlayerProcess.giveBackResource();
             videoPlayerProcess.terminate();
             notifyExecutionStatus(videoPlayerProcess, videoPlayerProcess.getTaskById(1), false, user);
@@ -329,11 +354,11 @@ public class Sistema {
                 Utils.print(String.format("Se crea el proceso %s referido al programa %s pertenenciente al usuario %s.", process.getName(), program.getName(),
                         user.getName()));
             } else {
-                Utils.print(String.format("El usuario %s no tiene permisos sobre el recurso %s.", user.getName(), errorMessageResource));
+                Utils.print(String.format("El usuario %s no tiene permisos sobre el recurso %s al ejecutar el proceso %s en el marco del programa %s.", user.getName(), errorMessageResource, process.getName(), program.getName()));
                 isValid = false;
             }
         } else {
-            Utils.print(String.format("El usuario %s no tiene permisos sobre el proceso %s.", user.getName(), process.getName()));
+            Utils.print(String.format("El usuario %s no tiene permisos sobre el proceso %s en el marco del programa %s..", user.getName(), process.getName(), program.getName()));
             isValid = false;
         }
         return isValid;
