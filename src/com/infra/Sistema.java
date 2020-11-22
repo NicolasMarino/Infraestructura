@@ -15,7 +15,7 @@ public class Sistema {
     public void menu() throws ClassNotFoundException {
         int opcion;
         do {
-            utils.print("\n1. Exclusión mutua \n2. Deadlock \n3. Opcion \n4. Opcion \n5. Fin\n");
+            utils.print("\n1. Exclusión mutua \n2. Deadlock \n3. Chequeo de permisos \n4. Opcion \n5. Fin\n");
             opcion = utils.leerNumeroEntre("Ingrese una opcion", 1, 5, "\033[31mIngrese un número entre 1 y 4\u001B[0m");
             switch (opcion) {
                 case 1:
@@ -25,6 +25,7 @@ public class Sistema {
                     deadlock();
                     break;
                 case 3:
+                    permissionsCheck();
                     break;
                 case 4:
                     break;
@@ -95,8 +96,11 @@ public class Sistema {
             printExcelProcess.terminate();
             notifyExecutionStatus(printExcelProcess, printExcelProcess.getTaskById(1), false, user);
 
-            utils.print("=== Exclusión mutua finalizada ===");
+
+        }else{
+            killProcess(printWordProcess, printWordTask, "Permisos");
         }
+        utils.print("=== Exclusión mutua finalizada ===");
         ;
     }
 
@@ -140,9 +144,48 @@ public class Sistema {
             printWordProcess.terminate();
             notifyExecutionStatus(printWordProcess, printWordProcess.getTaskById(1), false, user);
 
-            killProcess(printExcelProcess, printExcelProcess.getTaskById(1));
-            utils.print("=== Deadlock finalizado ===");
+            killProcess(printExcelProcess, printExcelProcess.getTaskById(1), "Deadlock");
+
+        }else{
+            killProcess(printWordProcess, printWordTask, "Permisos");
         }
+        utils.print("=== Deadlock finalizado ===");
+    }
+
+    private void permissionsCheck(){
+        utils.print("=== Chequeo de permisos iniciado ===");
+
+        List<Resource> listOfResources = this.RESOURCE_LIST;
+
+        User user = USERS_LIST.stream().filter(u -> "Roberta".equals(u.getName())).findFirst().get();
+
+        Task readWordTask = new Task("Leer archivo word", 1, getResourceByName("Ram"));
+        Task printWordTask = new Task("Imprimir archivo word", 2, getResourceByName("Printer"));
+        Process printWordProcess = new Process("Imprimir documento word", Status.AVAILABLE, 3, Arrays.asList(readWordTask, printWordTask), Permissions.TO_PRINT);
+
+        Program wordProgram = new Program("Word", Arrays.asList(printWordProcess));
+
+        if (validatePermissions(printWordProcess, wordProgram, user)) {
+            printWordProcess.run(user);
+            notifyExecutionStatus(printWordProcess, printWordProcess.getTaskById(0), true, user);
+
+            executeTask(user, printWordProcess, getResourceByName("Ram"), 0);
+
+            giveBackResource(printWordProcess, printWordProcess.getTaskById(0));
+
+            executeTask(user, printWordProcess, getResourceByName("Printer"), 1);
+
+            printWordProcess.getActualResource().setStatus(Status.AVAILABLE);
+            printWordProcess.giveBackResource();
+            printWordProcess.terminate();
+            notifyExecutionStatus(printWordProcess, printWordProcess.getTaskById(1), false, user);
+
+
+        } else{
+            killProcess(printWordProcess, printWordTask, "Permisos");
+
+        }
+        utils.print("=== Chequeo de permisos finalizado ===");
     }
 
     private void executeTask(User user, Process process, Resource resource, Integer taskId) {
@@ -191,7 +234,6 @@ public class Sistema {
         }
         if(process.getActualResource() == null){
             Utils.print(String.format("El proceso %s %s ejecutar la tarea %s por el usuario %s.", process.getName(), word, task.getName(), user.getName()));
-            //Utils.print(String.format("El usuario %s está ejecutando el proceso %s", user.getName(), printWordProcess.getName()));
         }
     }
 
@@ -217,8 +259,8 @@ public class Sistema {
         return isValid;
     }
 
-    private void killProcess(Process process, Task task){
+    private void killProcess(Process process, Task task, String reason){
         process.terminate();
-        Utils.print(String.format("El proceso %s no pudo ejecutar la tarea %s, por lo que fue cancelado.", process.getName(), task.getName()));
+        Utils.print(String.format("El proceso %s no pudo ejecutar la tarea (%s) %s, por lo que fue cancelado.", process.getName(), reason, task.getName()));
     }
 }
