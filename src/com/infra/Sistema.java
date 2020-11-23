@@ -54,7 +54,7 @@ public class Sistema {
 
     private final List<Role> ROLE_LIST = Arrays.asList(
             new Role("Admin", Arrays.asList(Permissions.READ, Permissions.TO_PRINT, Permissions.WRITE), RESOURCE_LIST),
-            new Role("User", Arrays.asList(Permissions.READ, Permissions.TO_PRINT), RESOURCE_LIST.stream().filter(e -> "Monitor".equals(e.getName()) ||  "Speakers".equals(e.getName()) || "Printer".equals(e.getName())).collect(Collectors.toList()) ),
+            new Role("User", Arrays.asList(Permissions.READ, Permissions.TO_PRINT), RESOURCE_LIST.stream().filter(e -> "Monitor".equals(e.getName()) || "Camera".equals(e.getName()) || "Speakers".equals(e.getName()) || "Printer".equals(e.getName())).collect(Collectors.toList()) ),
             new Role("Guest", Arrays.asList(Permissions.READ), RESOURCE_LIST.stream().filter(e -> "Monitor".equals(e.getName()) || "Speakers".equals(e.getName())).collect(Collectors.toList())));
 
     private final List<User> USERS_LIST = Arrays.asList(
@@ -197,7 +197,7 @@ public class Sistema {
     private void permissionsByResourceCheck() {
         Utils.print("=== Chequeo de permisos por recurso iniciado ===");
 
-        User user = USERS_LIST.stream().filter(u -> "Roberta".equals(u.getName())).findFirst().get();
+        User user = USERS_LIST.stream().filter(u -> "Pedro".equals(u.getName())).findFirst().get();
 
         Task takePictureTask = new Task("Sacar foto", 2, getResourceByName("Camera"));
         Task savePictureTask = new Task("Abrir WebCamToy", 1, getResourceByName("Ram"));
