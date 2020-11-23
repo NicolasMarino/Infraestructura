@@ -16,9 +16,9 @@ public class Sistema {
     public void menu() throws ClassNotFoundException {
         int opcion;
         do {
-            Utils.print("=== Menú principal === \n1. Exclusión mutua \n2. Deadlock \n3. Chequeo de permisos a nivel de programa \n4. Chequeo de permisos a nivel de programa " +
+            Utils.print("=== Menú principal === \n1. Exclusión mutua \n2. Deadlock \n3. Chequeo de permisos a nivel de programa \n4. Chequeo de permisos a nivel de recursos" +
                     "\n5. Ejecución satisfactoria \n6. Tiempo de ejecución \n7. Scheduller \n8. Fin\n=====================");
-            opcion = utils.leerNumeroEntre("Ingrese una opcion", 1, 8, "\033[31mIngrese un número entre 1 y 8\u001B[0m");
+            opcion = utils.leerNumeroEntre("Ingrese una opcion:", 1, 8, "\033[31mIngrese un número entre 1 y 8\u001B[0m");
             switch (opcion) {
                 case 1:
                     mutualExclusion();
