@@ -1,5 +1,6 @@
 package com.infra;
 
+import javax.rmi.CORBA.Util;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -15,8 +16,8 @@ public class Sistema {
     public void menu() throws ClassNotFoundException {
         int opcion;
         do {
-            Utils.print("\n1. Exclusión mutua \n2. Deadlock \n3. Chequeo de permisos a nivel de programa \n4. Chequeo de permisos a nivel de programa " +
-                    "\n5. Ejecución satisfactoria \n6. Tiempo de ejecución \n7. Tiempo de ejecución \n8. Fin\n");
+            Utils.print("=== Menú principal === \n1. Exclusión mutua \n2. Deadlock \n3. Chequeo de permisos a nivel de programa \n4. Chequeo de permisos a nivel de programa " +
+                    "\n5. Ejecución satisfactoria \n6. Tiempo de ejecución \n7. Scheduller \n8. Fin\n=====================");
             opcion = utils.leerNumeroEntre("Ingrese una opcion", 1, 8, "\033[31mIngrese un número entre 1 y 8\u001B[0m");
             switch (opcion) {
                 case 1:
@@ -62,62 +63,50 @@ public class Sistema {
             new User("Roberta", "Roberta343", ROLE_LIST.stream().filter(r -> "Guest".equals(r.getName())).findFirst().get()));
 
     private void mutualExclusion() {
-        utils.print("=== Exclusión mutua iniciada ===");
-
-        List<Resource> listOfResources = this.RESOURCE_LIST;
+        Utils.print("=== Exclusión mutua iniciada ===");
 
         User user = USERS_LIST.stream().filter(u -> "Santiago".equals(u.getName())).findFirst().get();
 
-        Task readWordTask = new Task("Leer archivo word", 1, getResourceByName("Ram"));
-        Task printWordTask = new Task("Imprimir archivo word", 2, getResourceByName("Printer"));
-        Process printWordProcess = new Process("Imprimir documento word", Status.AVAILABLE, 3, Arrays.asList(readWordTask, printWordTask), Permissions.TO_PRINT);
+        Task readWordTask = new Task("leer archivo", 1, getResourceByName("Ram"));
+        Task printWordTask = new Task("imprimir archivo", 2, getResourceByName("Printer"));
+        Process printWordProcess = new Process("imprimir documento", Status.AVAILABLE, 3, Arrays.asList(readWordTask, printWordTask), Permissions.TO_PRINT);
 
-        Task readExcelTask = new Task("Leer archivo excel", 1, getResourceByName("Ram"));
-        Task printExcelTask = new Task("Imprimir archivo excel", 3, getResourceByName("Printer"));
-        Process printExcelProcess = new Process("Imprimir documento excel", Status.AVAILABLE, 5, Arrays.asList(readExcelTask, printExcelTask), Permissions.TO_PRINT);
+        Task readExcelTask = new Task("leer archivo", 1, getResourceByName("Ram"));
+        Task printExcelTask = new Task("imprimir archivo", 3, getResourceByName("Printer"));
+        Process printExcelProcess = new Process("imprimir documento", Status.AVAILABLE, 5, Arrays.asList(readExcelTask, printExcelTask), Permissions.TO_PRINT);
 
         Program wordProgram = new Program("Word", Arrays.asList(printWordProcess));
         Program excelProgram = new Program("Excel", Arrays.asList(printExcelProcess));
 
 
         if (validatePermissions(printWordProcess, wordProgram, user) && validatePermissions(printExcelProcess, excelProgram, user)) {
-            printWordProcess.run(user);
-            notifyExecutionStatus(printWordProcess, printWordProcess.getTaskById(0), true, user);
+            printWordProcess.run();
+            notifyExecutionStatus(printWordProcess, 0, user, wordProgram);
 
-            printExcelProcess.run(user);
-            notifyExecutionStatus(printExcelProcess, printExcelProcess.getTaskById(0), true, user);
+            printExcelProcess.run();
+            notifyExecutionStatus(printExcelProcess, 0, user,excelProgram);
 
-            executeTask(user, printWordProcess, 0);
-            executeTask(user, printExcelProcess, 0);
+            executeTask(user, printWordProcess, 0, wordProgram);
+            executeTask(user, printExcelProcess, 0, excelProgram);
 
-            giveBackResource(printWordProcess, printWordProcess.getTaskById(0));
-            giveBackResource(printExcelProcess, printExcelProcess.getTaskById(0));
+            giveBackResource(printWordProcess, 0, wordProgram);
+            giveBackResource(printExcelProcess, 0, excelProgram);
 
-            executeTask(user, printWordProcess, 1);
-            executeTask(user, printExcelProcess, 1);
+            executeTask(user, printWordProcess, 1, wordProgram);
+            executeTask(user, printExcelProcess, 1, excelProgram);
 
-            printWordProcess.getActualResource().setStatus(Status.AVAILABLE);
-            printWordProcess.giveBackResource();
-            printWordProcess.terminate();
-            notifyExecutionStatus(printWordProcess, printWordProcess.getTaskById(1), false, user);
+            giveBackResource(printWordProcess, 1, wordProgram);
 
-            executeTask(user, printExcelProcess, 1);
-            giveBackResource(printExcelProcess, printExcelProcess.getTaskById(1));
-
-            printExcelProcess.giveBackResource();
-            printExcelProcess.terminate();
-            notifyExecutionStatus(printExcelProcess, printExcelProcess.getTaskById(1), false, user);
-
+            executeTask(user, printExcelProcess, 1, excelProgram);
+            giveBackResource(printExcelProcess, 1, excelProgram);
         } else {
             killProcess(printWordProcess, printWordTask, "Permisos");
         }
-        utils.print("=== Exclusión mutua finalizada ===");
+        Utils.print("=== Exclusión mutua finalizada ===");
     }
 
     private void deadlock() {
-        utils.print("=== Deadlock iniciado ===");
-
-        List<Resource> listOfResources = this.RESOURCE_LIST;
+        Utils.print("=== Deadlock iniciado ===");
 
         User user = USERS_LIST.stream().filter(u -> "Santiago".equals(u.getName())).findFirst().get();
 
@@ -134,25 +123,22 @@ public class Sistema {
 
 
         if (validatePermissions(printWordProcess, wordProgram, user) && validatePermissions(printExcelProcess, excelProgram, user)) {
-            printWordProcess.run(user);
-            notifyExecutionStatus(printWordProcess, printWordProcess.getTaskById(0), true, user);
+            printWordProcess.run();
+            notifyExecutionStatus(printWordProcess, 0,user, wordProgram);
 
-            printExcelProcess.run(user);
-            notifyExecutionStatus(printExcelProcess, printExcelProcess.getTaskById(0), true, user);
+            printExcelProcess.run();
+            notifyExecutionStatus(printExcelProcess,0, user, excelProgram);
 
-            executeTask(user, printWordProcess, 0);
-            executeTask(user, printExcelProcess, 0);
+            executeTask(user, printWordProcess, 0, wordProgram);
+            executeTask(user, printExcelProcess, 0, excelProgram);
 
-            giveBackResource(printWordProcess, printWordProcess.getTaskById(0));
-            giveBackResource(printExcelProcess, printExcelProcess.getTaskById(0));
+            giveBackResource(printWordProcess, 0, wordProgram);
+            giveBackResource(printExcelProcess, 0, excelProgram);
 
-            executeTask(user, printWordProcess, 1);
-            executeTask(user, printExcelProcess, 1);
+            executeTask(user, printWordProcess, 1, wordProgram);
+            executeTask(user, printExcelProcess, 1, excelProgram);
 
-            printWordProcess.getActualResource().setStatus(Status.AVAILABLE);
-            printWordProcess.giveBackResource();
-            printWordProcess.terminate();
-            notifyExecutionStatus(printWordProcess, printWordProcess.getTaskById(1), false, user);
+            giveBackResource(printWordProcess, 1, wordProgram);
 
             killProcess(printExcelProcess, printExcelProcess.getTaskById(1), "Deadlock");
 
@@ -165,8 +151,6 @@ public class Sistema {
     private void permissionsProgramCheck() {
         Utils.print("=== Chequeo de permisos por programa iniciado ===");
 
-        List<Resource> listOfResources = this.RESOURCE_LIST;
-
         User user = USERS_LIST.stream().filter(u -> "Roberta".equals(u.getName())).findFirst().get();
 
         Task readWordTask = new Task("Leer archivo word", 1, getResourceByName("Ram"));
@@ -176,24 +160,18 @@ public class Sistema {
         Program wordProgram = new Program("Word", Arrays.asList(printWordProcess));
 
         if (validatePermissions(printWordProcess, wordProgram, user)) {
-            printWordProcess.run(user);
-            notifyExecutionStatus(printWordProcess, printWordProcess.getTaskById(0), true, user);
+            printWordProcess.run();
+            notifyExecutionStatus(printWordProcess, 0, user, wordProgram);
 
-            executeTask(user, printWordProcess, 0);
+            executeTask(user, printWordProcess, 0, wordProgram);
 
-            giveBackResource(printWordProcess, printWordProcess.getTaskById(0));
+            giveBackResource(printWordProcess, 0, wordProgram);
 
-            executeTask(user, printWordProcess, 1);
+            executeTask(user, printWordProcess, 1, wordProgram);
 
-            printWordProcess.getActualResource().setStatus(Status.AVAILABLE);
-            printWordProcess.giveBackResource();
-            printWordProcess.terminate();
-            notifyExecutionStatus(printWordProcess, printWordProcess.getTaskById(1), false, user);
-
-
+            giveBackResource(printWordProcess, 1, wordProgram);
         } else {
             killProcess(printWordProcess, printWordTask, "Permisos");
-
         }
         Utils.print("=== Chequeo de permisos por programa finalizado ===");
     }
@@ -201,19 +179,17 @@ public class Sistema {
     private void permissionsByResourceCheck() {
         Utils.print("=== Chequeo de permisos por recurso iniciado ===");
 
-        List<Resource> listOfResources = this.RESOURCE_LIST;
-
         User user = USERS_LIST.stream().filter(u -> "Roberta".equals(u.getName())).findFirst().get();
 
         Task takePictureTask = new Task("Sacar foto", 2, getResourceByName("Camera"));
-        Task savePictureTasl = new Task("Abrir WebCamToy", 1, getResourceByName("Ram"));
-        Process webCamToyTakePictureProcess = new Process("Take and save picture", Status.AVAILABLE, 3, Arrays.asList(takePictureTask, savePictureTasl), Permissions.READ);
+        Task savePictureTask = new Task("Abrir WebCamToy", 1, getResourceByName("Ram"));
+        Process webCamToyTakePictureProcess = new Process("Take and save picture", Status.AVAILABLE, 3, Arrays.asList(takePictureTask, savePictureTask), Permissions.READ);
 
         Program webCamToyProgram = new Program("WebCamToy", Arrays.asList(webCamToyTakePictureProcess));
 
 
         if (validatePermissions(webCamToyTakePictureProcess, webCamToyProgram, user)) {
-            webCamToyTakePictureProcess.run(user);
+            webCamToyTakePictureProcess.run();
         } else {
             killProcess(webCamToyTakePictureProcess, takePictureTask, "Permisos");
 
@@ -224,32 +200,25 @@ public class Sistema {
     private void successfulExecution() {
         Utils.print("=== Ejecución satisfactoria iniciando ===");
 
-        List<Resource> listOfResources = this.RESOURCE_LIST;
-
         User user = USERS_LIST.stream().filter(u -> "Roberta".equals(u.getName())).findFirst().get();
 
-        Task viewVideoTask = new Task("Ver video", 1, getResourceByName("Monitor"));
-        Task listenVideoTask = new Task("Escuchar video", 2, getResourceByName("Speakers"));
-        Process videoPlayerProcess = new Process("Reproducir video", Status.AVAILABLE, 3, Arrays.asList(viewVideoTask, listenVideoTask), Permissions.READ);
+        Task viewVideoTask = new Task("visualizar video", 1, getResourceByName("Monitor"));
+        Task listenVideoTask = new Task("escuchar video", 2, getResourceByName("Speakers"));
+        Process videoPlayerProcess = new Process("reproducir video", Status.AVAILABLE, 3, Arrays.asList(viewVideoTask, listenVideoTask), Permissions.READ);
 
         Program videoPlayerProgram = new Program("Video Player", Arrays.asList(videoPlayerProcess));
 
         if (validatePermissions(videoPlayerProcess, videoPlayerProgram, user)) {
-            videoPlayerProcess.run(user);
-            notifyExecutionStatus(videoPlayerProcess, videoPlayerProcess.getTaskById(0), true, user);
+            videoPlayerProcess.run();
+            notifyExecutionStatus(videoPlayerProcess, 0, user, videoPlayerProgram);
 
-            executeTask(user, videoPlayerProcess, 0);
+            executeTask(user, videoPlayerProcess, 0, videoPlayerProgram);
 
-            giveBackResource(videoPlayerProcess, videoPlayerProcess.getTaskById(0));
+            giveBackResource(videoPlayerProcess, 0, videoPlayerProgram);
 
-            executeTask(user, videoPlayerProcess, 1);
+            executeTask(user, videoPlayerProcess, 1, videoPlayerProgram);
 
-            giveBackResource(videoPlayerProcess, videoPlayerProcess.getTaskById(1));
-
-            videoPlayerProcess.giveBackResource();
-            videoPlayerProcess.terminate();
-            notifyExecutionStatus(videoPlayerProcess, videoPlayerProcess.getTaskById(1), false, user);
-
+            giveBackResource(videoPlayerProcess, 1, videoPlayerProgram);
 
         } else {
             killProcess(videoPlayerProcess, viewVideoTask, "Permisos");
@@ -268,7 +237,7 @@ public class Sistema {
 
         Task saveAsDocTask = new Task("guardar documento", 3, getResourceByName("Hdd"));
         Task showWindowTask = new Task("mostrando pantalla guardar como", 2, getResourceByName("Ram"));
-        Process saveAsProcess = new Process("Guardar como", Status.AVAILABLE, 5, Arrays.asList(saveAsDocTask, showWindowTask), Permissions.WRITE);
+        Process saveAsProcess = new Process("guardar como", Status.AVAILABLE, 5, Arrays.asList(saveAsDocTask, showWindowTask), Permissions.WRITE);
 
         Program notepadProgram = new Program("Bloc de notas", Arrays.asList(writeProcess, saveAsProcess));
 
@@ -276,30 +245,25 @@ public class Sistema {
             writeProcess.sortTaskListByExecutionTime();
             saveAsProcess.sortTaskListByExecutionTime();
 
-            writeProcess.run(user);
-            notifyExecutionStatus(writeProcess, writeProcess.getTaskById(0), true, user);
+            writeProcess.run();
+            notifyExecutionStatus(writeProcess, 0, user, notepadProgram);
 
-            executeTask(user, writeProcess, 0);
+            executeTask(user, writeProcess, 0, notepadProgram);
 
-            giveBackResource(writeProcess, writeProcess.getTaskById(0));
+            giveBackResource(writeProcess, 0, notepadProgram);
 
-            saveAsProcess.run(user);
-            notifyExecutionStatus(saveAsProcess, saveAsProcess.getTaskById(0), true, user);
+            saveAsProcess.run();
+            notifyExecutionStatus(saveAsProcess, 0, user, notepadProgram);
 
-            executeTask(user, writeProcess, 0);
+            executeTask(user, saveAsProcess, 0, notepadProgram);
 
-            giveBackResource(saveAsProcess, saveAsProcess.getTaskById(0));
+            giveBackResource(saveAsProcess, 0, notepadProgram);
 
-            notifyExecutionStatus(saveAsProcess, saveAsProcess.getTaskById(1), true, user);
+            notifyExecutionStatus(saveAsProcess, 1, user, notepadProgram);
 
-            executeTask(user, saveAsProcess, 1);
+            executeTask(user, saveAsProcess, 1, notepadProgram);
 
-            giveBackResource(saveAsProcess, saveAsProcess.getTaskById(1));
-
-            saveAsProcess.giveBackResource();
-            saveAsProcess.terminate();
-            notifyExecutionStatus(saveAsProcess, saveAsProcess.getTaskById(1), false, user);
-
+            giveBackResource(saveAsProcess, 1, notepadProgram);
 
         } else {
             killProcess(writeProcess, writeDocTask, "Permisos");
@@ -312,35 +276,28 @@ public class Sistema {
     private void timeoutExecution() {
         Utils.print("=== Timeout iniciando ===");
 
-        List<Resource> listOfResources = this.RESOURCE_LIST;
-
         User user = USERS_LIST.stream().filter(u -> "Roberta".equals(u.getName())).findFirst().get();
 
-        Task viewVideoTask = new Task("Ver video", 1, getResourceByName("Monitor"));
-        Task listenVideoTask = new Task("Escuchar video", 2, getResourceByName("Speakers"));
-        Process videoPlayerProcess = new Process("Reproducir video", Status.AVAILABLE, 2, Arrays.asList(viewVideoTask, listenVideoTask), Permissions.READ);
+        Task viewVideoTask = new Task("ver video", 1, getResourceByName("Monitor"));
+        Task listenVideoTask = new Task("escuchar video", 2, getResourceByName("Speakers"));
+        Process videoPlayerProcess = new Process("reproducir video", Status.AVAILABLE, 2, Arrays.asList(viewVideoTask, listenVideoTask), Permissions.READ);
 
         Program videoPlayerProgram = new Program("Video Player", Arrays.asList(videoPlayerProcess));
 
         if (validatePermissions(videoPlayerProcess, videoPlayerProgram, user)) {
-            videoPlayerProcess.run(user);
-            notifyExecutionStatus(videoPlayerProcess, videoPlayerProcess.getTaskById(0), true, user);
+            videoPlayerProcess.run();
+            notifyExecutionStatus(videoPlayerProcess, 0, user, videoPlayerProgram);
 
-            executeTask(user, videoPlayerProcess, 0);
+            executeTask(user, videoPlayerProcess, 0, videoPlayerProgram);
 
-            giveBackResource(videoPlayerProcess, videoPlayerProcess.getTaskById(0));
+            giveBackResource(videoPlayerProcess, 0, videoPlayerProgram);
 
-            executeTask(user, videoPlayerProcess, 1);
+            executeTask(user, videoPlayerProcess, 1, videoPlayerProgram);
 
-            videoPlayerProcess.setAvailableTimeout(videoPlayerProcess.getExecutionTimeout());
-            executeTask(user, videoPlayerProcess, 1);
+            videoPlayerProcess.resetAvailableTimeout();
+            executeTask(user, videoPlayerProcess, 1, videoPlayerProgram);
 
-            if (videoPlayerProcess.getActualResource() != null) {
-                videoPlayerProcess.getActualResource().setStatus(Status.AVAILABLE);
-            }
-            videoPlayerProcess.giveBackResource();
-            videoPlayerProcess.terminate();
-            notifyExecutionStatus(videoPlayerProcess, videoPlayerProcess.getTaskById(1), false, user);
+            giveBackResource(videoPlayerProcess, 1, videoPlayerProgram);
         } else {
             killProcess(videoPlayerProcess, viewVideoTask, "Permisos");
         }
@@ -348,16 +305,16 @@ public class Sistema {
         Utils.print("=== Timeout finalizando ===");
     }
 
-    private void executeTask(User user, Process process, Integer taskId) {
+    private void executeTask(User user, Process process, Integer taskId, Program program) {
         if (isTimeExceeded(process, process.getTaskById(taskId))) {
-            if (askAndGivePermissionResource(user, process, process.getTaskById(taskId))) {
+            if (askAndGivePermissionResource(user, process, process.getTaskById(taskId), program)) {
                 process.setActualResource(process.getTaskById(taskId).getResource());
-                process.getTaskById(taskId).getResource().setStatus(Status.RUNNING);
-                Utils.print(String.format("Ejecutando tarea %s por el usuario %s.", process.getTaskById(taskId).getName(), user.getName()));
+                process.getResourceByTaskId(taskId).setStatus(Status.RUNNING);
+                Utils.print(String.format("Ejecutando tarea %s por el usuario %s en el marco del programa %s.", process.getTaskById(taskId).getName(), user.getName(), program.getName()));
                 process.setAvailableTimeout(process.getAvailableTimeout() - process.getTaskById(taskId).getExecutionTime());
             }
         } else {
-            Utils.print(String.format("Error de timeout en la tarea %s del proceso %s ejecutado por el usuario %s.", process.getTaskById(taskId).getName(), process.getName(), user.getName()));
+            Utils.print(String.format("Hubo un rror de timeout al intentar ejecutar la tarea %s del proceso %s ejecutado por el usuario %s en el marco del programa %s.", process.getTaskById(taskId).getName(), process.getName(), user.getName(), program.getName()));
         }
     }
 
@@ -369,31 +326,25 @@ public class Sistema {
         }
     }
 
-    private boolean askAndGivePermissionResource(User user, Process process, Task task) {
-        Utils.print(String.format("Usuario %s pide acceso al recurso %s para la tarea %s.", user.getName(), task.getResource().getName(), task.getName()));
+    private boolean askAndGivePermissionResource(User user, Process process, Task task, Program program) {
+        Utils.print(String.format("Usuario %s pide acceso al recurso %s para la tarea %s en el marco del programa %s.", user.getName(), task.getResource().getName(), task.getName(), program.getName()));
         if (process.getActualResource() == null && task.getResource().isAvailable()) {
-            Utils.print(String.format("Usuario %s obtiene acceso al recurso %s para la tarea %s.", user.getName(), task.getResource().getName(), task.getName()));
+            Utils.print(String.format("Usuario %s obtiene acceso al recurso %s para la tarea %s en el marco del programa %s.", user.getName(), task.getResource().getName(), task.getName(), program.getName()));
             return true;
         } else {
-            Utils.print(String.format("Usuario %s no puede acceso al recurso %s dado el proceso se encuentra utilizando el mismo.", user.getName(), task.getResource().getName()));
+            Utils.print(String.format("Usuario %s no puede acceder al recurso %s en el marco del programa %s dado que el mismo se encuentra en uso.", user.getName(), task.getResource().getName(), program.getName()));
             return false;
         }
     }
 
-    private void giveBackResource(Process process, Task task) {
-        process.giveBackResource();
-        task.getResource().setStatus(Status.AVAILABLE);
-        Utils.print(String.format("El proceso %s terminó de ejecutar la tarea %s.", process.getName(), task.getName()));
+    private void giveBackResource(Process process, Integer taskId, Program program) {
+        process.terminate();
+        process.getResourceByTaskId(taskId).setStatus(Status.AVAILABLE);
+        Utils.print(String.format("El proceso %s devolvió el recurso %s y terminó de ejecutar la tarea %s en el marco del programa %s.", process.getName(), process.getResourceByTaskId(taskId).getName(), process.getTaskById(taskId).getName(), program.getName()));
     }
 
-    private void notifyExecutionStatus(Process process, Task task, Boolean starting, User user) {
-        String word = "terminó de";
-        if (starting) {
-            word = "empezó a";
-        }
-        if (process.getActualResource() == null) {
-            Utils.print(String.format("El proceso %s %s ejecutar la tarea %s por el usuario %s.", process.getName(), word, task.getName(), user.getName()));
-        }
+    private void notifyExecutionStatus(Process process, Integer taskId, User user, Program program) {
+        Utils.print(String.format("El proceso %s empezó a ejecutar la tarea %s por el usuario %s en el marco del programa %s.", process.getName(), process.getTaskById(taskId).getName(), user.getName(), program.getName()));
     }
 
     private Resource getResourceByName(String name) {
@@ -419,7 +370,9 @@ public class Sistema {
     }
 
     private void killProcess(Process process, Task task, String reason) {
-        process.terminate();
+        if(process.getActualResource() != null){
+            process.terminate();
+        }
         Utils.print(String.format("El proceso %s no pudo ejecutar la tarea (%s) %s, por lo que fue cancelado.", process.getName(), reason, task.getName()));
     }
 }

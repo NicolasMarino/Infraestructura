@@ -1,10 +1,8 @@
 package com.infra;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class Process {
 
@@ -85,8 +83,8 @@ public class Process {
         this.actualResource = actualResource;
     }
 
-    public Task getTaskById(Integer pos) {
-        return this.getTaskList().get(pos);
+    public Task getTaskById(Integer taskId) {
+        return this.getTaskList().get(taskId);
     }
 
     public Integer getAvailableTimeout() {
@@ -97,16 +95,21 @@ public class Process {
         this.availableTimeout = availableTimeout;
     }
 
-    Resource getResourceByTaskId(Integer pos) {
-        return this.getTaskList().get(pos).getResource();
+    Resource getResourceByTaskId(Integer taskId) {
+        return this.getTaskList().get(taskId).getResource();
     }
 
-    public void run(User user) {
+    public void run() {
         this.setStatus(Status.RUNNING);
     }
 
-    public void terminate() {
+    public void resetAvailableTimeout(){
         this.setAvailableTimeout(this.getExecutionTimeout());
+    }
+
+    public void terminate() {
+        this.actualResource.setStatus(Status.AVAILABLE);
+        this.setActualResource(null);
         this.setStatus(Status.AVAILABLE);
     }
 
@@ -125,10 +128,6 @@ public class Process {
         }
         map.put(true, "");
         return map;
-    }
-
-    public void giveBackResource() {
-        this.setActualResource(null);
     }
 
     public void sortTaskListByExecutionTime(){

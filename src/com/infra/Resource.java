@@ -39,7 +39,7 @@ public class Resource {
     }
 
     public boolean isAvailable(){
-        return Status.AVAILABLE.equals(this.status);
+        return Status.AVAILABLE.equals(this.status) || this.shared;
     }
 
     @Override
