@@ -176,8 +176,9 @@ public class Sistema {
 
         Program wordProgram = new Program("Word", Arrays.asList(printWordProcess));
 
+        Utils.print(String.format("Empezando ejecución programa: %s, por parte del usuario: %s.", wordProgram.getName(),user.getName()));
+
         if (validatePermissions(printWordProcess, wordProgram, user)) {
-            Utils.print(String.format("Empezando ejecución programa: %s, por parte del usuario: %s.", wordProgram.getName(),user.getName()));
             printWordProcess.run();
 
             executeTask(user, printWordProcess, 0, wordProgram);
