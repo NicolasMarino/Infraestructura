@@ -54,7 +54,7 @@ public class Sistema {
 
     private final List<Role> ROLE_LIST = Arrays.asList(
             new Role("Admin", Arrays.asList(Permissions.READ, Permissions.TO_PRINT, Permissions.WRITE), RESOURCE_LIST),
-            new Role("User", Arrays.asList(Permissions.READ, Permissions.TO_PRINT), RESOURCE_LIST.stream().filter(e -> "Monitor".equals(e.getName()) || "Printer".equals(e.getName())).collect(Collectors.toList())),
+            new Role("User", Arrays.asList(Permissions.READ, Permissions.TO_PRINT), RESOURCE_LIST.stream().filter(e -> "Monitor".equals(e.getName()) ||  "Speakers".equals(e.getName()) || "Printer".equals(e.getName())).collect(Collectors.toList()) ),
             new Role("Guest", Arrays.asList(Permissions.READ), RESOURCE_LIST.stream().filter(e -> "Monitor".equals(e.getName()) || "Speakers".equals(e.getName())).collect(Collectors.toList())));
 
     private final List<User> USERS_LIST = Arrays.asList(
@@ -136,7 +136,7 @@ public class Sistema {
             giveBackResource(printExcelProcess, 0, excelProgram);
 
             executeTask(user, printWordProcess, 1, wordProgram);
-            executeTask(user, printExcelProcess, 1, excelProgram);
+            executeTask(user, printWordProcess, printExcelProcess,1,excelProgram);
 
             giveBackResource(printWordProcess, 1, wordProgram);
 
@@ -145,7 +145,7 @@ public class Sistema {
         } else {
             killProcess(printWordProcess, printWordTask, "Permisos");
         }
-        utils.print("=== Deadlock finalizado ===");
+        Utils.print("=== Deadlock finalizado ===");
     }
 
     private void permissionsProgramCheck() {
@@ -310,11 +310,26 @@ public class Sistema {
             if (askAndGivePermissionResource(user, process, process.getTaskById(taskId), program)) {
                 process.setActualResource(process.getTaskById(taskId).getResource());
                 process.getResourceByTaskId(taskId).setStatus(Status.RUNNING);
-                Utils.print(String.format("Ejecutando tarea %s por el usuario %s en el marco del programa %s.", process.getTaskById(taskId).getName(), user.getName(), program.getName()));
+                process.setStatus(Status.LOCKED);
+                Utils.print(String.format("Ejecutando tarea: %s, por el usuario: %s, en el marco del programa: %s.", process.getTaskById(taskId).getName().toLowerCase(), user.getName(), program.getName().toLowerCase()));
                 process.setAvailableTimeout(process.getAvailableTimeout() - process.getTaskById(taskId).getExecutionTime());
             }
         } else {
-            Utils.print(String.format("Hubo un rror de timeout al intentar ejecutar la tarea %s del proceso %s ejecutado por el usuario %s en el marco del programa %s.", process.getTaskById(taskId).getName(), process.getName(), user.getName(), program.getName()));
+            Utils.print(String.format("Hubo un error de timeout al intentar ejecutar la tarea: %s, del proceso: %s, ejecutado por el usuario: %s, en el marco del programa %s.", process.getTaskById(taskId).getName().toLowerCase(), process.getName().toLowerCase(), user.getName().toLowerCase(), program.getName().toLowerCase()));
+        }
+    }
+
+    private void executeTask(User user, Process processExecuted, Process processToExecute, Integer taskIdToExecute, Program program) {
+        if (isTimeExceeded(processToExecute, processToExecute.getTaskById(taskIdToExecute))) {
+            if (askAndGivePermissionToProcess(user, processExecuted, processToExecute, taskIdToExecute, program)) {
+                processToExecute.setActualResource(processToExecute.getTaskById(taskIdToExecute).getResource());
+                processToExecute.getResourceByTaskId(taskIdToExecute).setStatus(Status.RUNNING);
+                processToExecute.setStatus(Status.LOCKED);
+                Utils.print(String.format("Ejecutando tarea: %s, por el usuario: %s, en el marco del programa: %s.", processToExecute.getTaskById(taskIdToExecute).getName().toLowerCase(), user.getName(), program.getName().toLowerCase()));
+                processToExecute.setAvailableTimeout(processToExecute.getAvailableTimeout() - processToExecute.getTaskById(taskIdToExecute).getExecutionTime());
+            }
+        } else {
+            Utils.print(String.format("Hubo un error de timeout al intentar ejecutar la tarea: %s, del proceso: %s, ejecutado por el usuario: %s, en el marco del programa %s.", processToExecute.getTaskById(taskIdToExecute).getName().toLowerCase(), processToExecute.getName().toLowerCase(), user.getName().toLowerCase(), program.getName().toLowerCase()));
         }
     }
 
@@ -326,13 +341,22 @@ public class Sistema {
         }
     }
 
+    private boolean askAndGivePermissionToProcess(User user, Process processExecuted, Process processToExecute, Integer taskIdToExecute, Program program) {
+        if (processExecuted.getStatus() == Status.LOCKED && processExecuted.getActualResource().equals(processToExecute.getTaskById(taskIdToExecute).getResource())) {
+            Utils.print(String.format("Hubo un error de deadlock al intentar ejecutar el proceso: %s, en el marco del programa: %s.", processExecuted.getName(), program.getName()));
+            return false;
+        } else {
+            return true;
+        }
+    }
+
     private boolean askAndGivePermissionResource(User user, Process process, Task task, Program program) {
-        Utils.print(String.format("Usuario %s pide acceso al recurso %s para la tarea %s en el marco del programa %s.", user.getName(), task.getResource().getName(), task.getName(), program.getName()));
+        Utils.print(String.format("Usuario: %s, pide acceso al recurso: %s, para la tarea: %s, en el marco del programa: %s.", user.getName(), task.getResource().getName(), task.getName(), program.getName()));
         if (process.getActualResource() == null && task.getResource().isAvailable()) {
-            Utils.print(String.format("Usuario %s obtiene acceso al recurso %s para la tarea %s en el marco del programa %s.", user.getName(), task.getResource().getName(), task.getName(), program.getName()));
+            Utils.print(String.format("Usuario: %s, obtiene acceso al recurso: %s, para la tarea: %s, en el marco del programa: %s.", user.getName(), task.getResource().getName(), task.getName(), program.getName()));
             return true;
         } else {
-            Utils.print(String.format("Usuario %s no puede acceder al recurso %s en el marco del programa %s dado que el mismo se encuentra en uso.", user.getName(), task.getResource().getName(), program.getName()));
+            Utils.print(String.format("Usuario: %s, no puede acceder al recurso: %s, en el marco del programa: %s, dado que el mismo se encuentra en uso.", user.getName(), task.getResource().getName(), program.getName()));
             return false;
         }
     }
@@ -340,11 +364,11 @@ public class Sistema {
     private void giveBackResource(Process process, Integer taskId, Program program) {
         process.terminate();
         process.getResourceByTaskId(taskId).setStatus(Status.AVAILABLE);
-        Utils.print(String.format("El proceso %s devolvió el recurso %s y terminó de ejecutar la tarea %s en el marco del programa %s.", process.getName(), process.getResourceByTaskId(taskId).getName(), process.getTaskById(taskId).getName(), program.getName()));
+        Utils.print(String.format("El proceso: %s, devolvió el recurso: %s, y terminó de ejecutar la tarea: %s, en el marco del programa: %s.", process.getName(), process.getResourceByTaskId(taskId).getName(), process.getTaskById(taskId).getName(), program.getName()));
     }
 
     private void notifyExecutionStatus(Process process, Integer taskId, User user, Program program) {
-        Utils.print(String.format("El proceso %s empezó a ejecutar la tarea %s por el usuario %s en el marco del programa %s.", process.getName(), process.getTaskById(taskId).getName(), user.getName(), program.getName()));
+        Utils.print(String.format("El proceso: %s, empezó a ejecutar la tarea: %s, por el usuario: %s, en el marco del programa: %s.", process.getName(), process.getTaskById(taskId).getName(), user.getName(), program.getName()));
     }
 
     private Resource getResourceByName(String name) {
@@ -356,14 +380,14 @@ public class Sistema {
         if (process.validateActionPermission(user)) {
             String errorMessageResource = process.validateResourcesPermission(user).get(false);
             if (errorMessageResource == null) {
-                Utils.print(String.format("Se crea el proceso %s referido al programa %s pertenenciente al usuario %s.", process.getName(), program.getName(),
+                Utils.print(String.format("Se crea el proceso: %s, referido al programa: %s, pertenenciente al usuario: %s.", process.getName(), program.getName(),
                         user.getName()));
             } else {
-                Utils.print(String.format("El usuario %s no tiene permisos sobre el recurso %s al ejecutar el proceso %s en el marco del programa %s.", user.getName(), errorMessageResource, process.getName(), program.getName()));
+                Utils.print(String.format("El usuario: %s, no tiene permisos sobre el recurso: %s, al ejecutar el proceso: %s, en el marco del programa: %s.", user.getName(), errorMessageResource, process.getName(), program.getName()));
                 isValid = false;
             }
         } else {
-            Utils.print(String.format("El usuario %s no tiene permisos sobre el proceso %s en el marco del programa %s..", user.getName(), process.getName(), program.getName()));
+            Utils.print(String.format("El usuario: %s, no tiene permisos sobre el proceso: %s, en el marco del programa: %s.", user.getName(), process.getName(), program.getName()));
             isValid = false;
         }
         return isValid;
@@ -373,6 +397,6 @@ public class Sistema {
         if(process.getActualResource() != null){
             process.terminate();
         }
-        Utils.print(String.format("El proceso %s no pudo ejecutar la tarea (%s) %s, por lo que fue cancelado.", process.getName(), reason, task.getName()));
+        Utils.print(String.format("El proceso: %s, no pudo ejecutar la tarea: (%s) %s, por lo que fue cancelado.", process.getName(), reason, task.getName()));
     }
 }
