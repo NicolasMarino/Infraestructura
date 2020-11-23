@@ -16,8 +16,8 @@ public class Sistema {
         int opcion;
         do {
             Utils.print("\n1. Exclusión mutua \n2. Deadlock \n3. Chequeo de permisos a nivel de programa \n4. Chequeo de permisos a nivel de programa " +
-                    "\n5. Ejecución satisfactoria \n6. Tiempo de ejecución  \n7. Fin\n");
-            opcion = utils.leerNumeroEntre("Ingrese una opcion", 1, 7, "\033[31mIngrese un número entre 1 y 7\u001B[0m");
+                    "\n5. Ejecución satisfactoria \n6. Tiempo de ejecución \n7. Tiempo de ejecución \n8. Fin\n");
+            opcion = utils.leerNumeroEntre("Ingrese una opcion", 1, 8, "\033[31mIngrese un número entre 1 y 8\u001B[0m");
             switch (opcion) {
                 case 1:
                     mutualExclusion();
@@ -38,10 +38,13 @@ public class Sistema {
                     timeoutExecution();
                     break;
                 case 7:
+                    scheduller();
+                    break;
+                case 8:
                     System.out.println("Hasta luego!");
                     break;
             }
-        } while (opcion != 7);
+        } while (opcion != 8);
     }
 
     private final List<Resource> RESOURCE_LIST = Arrays.asList(new Resource("Printer", false), new Resource("Camera", false),
@@ -56,8 +59,7 @@ public class Sistema {
     private final List<User> USERS_LIST = Arrays.asList(
             new User("Santiago", "Santiago123", ROLE_LIST.stream().filter(r -> "Admin".equals(r.getName())).findFirst().get()),
             new User("Pedro", "Pedro53", ROLE_LIST.stream().filter(r -> "User".equals(r.getName())).findFirst().get()),
-            new User("Roberta", "Roberta343", ROLE_LIST.stream().filter(r -> "Guest".equals(r.getName())).findFirst().get())
-    );
+            new User("Roberta", "Roberta343", ROLE_LIST.stream().filter(r -> "Guest".equals(r.getName())).findFirst().get()));
 
     private void mutualExclusion() {
         utils.print("=== Exclusión mutua iniciada ===");
@@ -85,21 +87,21 @@ public class Sistema {
             printExcelProcess.run(user);
             notifyExecutionStatus(printExcelProcess, printExcelProcess.getTaskById(0), true, user);
 
-            executeTask(user, printWordProcess, getResourceByName("Ram"), 0);
-            executeTask(user, printExcelProcess, getResourceByName("Ram"), 0);
+            executeTask(user, printWordProcess, 0);
+            executeTask(user, printExcelProcess, 0);
 
             giveBackResource(printWordProcess, printWordProcess.getTaskById(0));
             giveBackResource(printExcelProcess, printExcelProcess.getTaskById(0));
 
-            executeTask(user, printWordProcess, getResourceByName("Printer"), 1);
-            executeTask(user, printExcelProcess, getResourceByName("Printer"), 1);
+            executeTask(user, printWordProcess, 1);
+            executeTask(user, printExcelProcess, 1);
 
             printWordProcess.getActualResource().setStatus(Status.AVAILABLE);
             printWordProcess.giveBackResource();
             printWordProcess.terminate();
             notifyExecutionStatus(printWordProcess, printWordProcess.getTaskById(1), false, user);
 
-            executeTask(user, printExcelProcess, getResourceByName("Printer"), 1);
+            executeTask(user, printExcelProcess, 1);
             giveBackResource(printExcelProcess, printExcelProcess.getTaskById(1));
 
             printExcelProcess.giveBackResource();
@@ -138,14 +140,14 @@ public class Sistema {
             printExcelProcess.run(user);
             notifyExecutionStatus(printExcelProcess, printExcelProcess.getTaskById(0), true, user);
 
-            executeTask(user, printWordProcess, getResourceByName("Ram"), 0);
-            executeTask(user, printExcelProcess, getResourceByName("Ram"), 0);
+            executeTask(user, printWordProcess, 0);
+            executeTask(user, printExcelProcess, 0);
 
             giveBackResource(printWordProcess, printWordProcess.getTaskById(0));
             giveBackResource(printExcelProcess, printExcelProcess.getTaskById(0));
 
-            executeTask(user, printWordProcess, getResourceByName("Printer"), 1);
-            executeTask(user, printExcelProcess, getResourceByName("Printer"), 1);
+            executeTask(user, printWordProcess, 1);
+            executeTask(user, printExcelProcess, 1);
 
             printWordProcess.getActualResource().setStatus(Status.AVAILABLE);
             printWordProcess.giveBackResource();
@@ -177,11 +179,11 @@ public class Sistema {
             printWordProcess.run(user);
             notifyExecutionStatus(printWordProcess, printWordProcess.getTaskById(0), true, user);
 
-            executeTask(user, printWordProcess, getResourceByName("Ram"), 0);
+            executeTask(user, printWordProcess, 0);
 
             giveBackResource(printWordProcess, printWordProcess.getTaskById(0));
 
-            executeTask(user, printWordProcess, getResourceByName("Printer"), 1);
+            executeTask(user, printWordProcess, 1);
 
             printWordProcess.getActualResource().setStatus(Status.AVAILABLE);
             printWordProcess.giveBackResource();
@@ -209,6 +211,7 @@ public class Sistema {
 
         Program webCamToyProgram = new Program("WebCamToy", Arrays.asList(webCamToyTakePictureProcess));
 
+
         if (validatePermissions(webCamToyTakePictureProcess, webCamToyProgram, user)) {
             webCamToyTakePictureProcess.run(user);
         } else {
@@ -235,11 +238,11 @@ public class Sistema {
             videoPlayerProcess.run(user);
             notifyExecutionStatus(videoPlayerProcess, videoPlayerProcess.getTaskById(0), true, user);
 
-            executeTask(user, videoPlayerProcess, getResourceByName("Ram"), 0);
+            executeTask(user, videoPlayerProcess, 0);
 
             giveBackResource(videoPlayerProcess, videoPlayerProcess.getTaskById(0));
 
-            executeTask(user, videoPlayerProcess, getResourceByName("Printer"), 1);
+            executeTask(user, videoPlayerProcess, 1);
 
             giveBackResource(videoPlayerProcess, videoPlayerProcess.getTaskById(1));
 
@@ -253,6 +256,57 @@ public class Sistema {
         }
 
         Utils.print("=== Ejecución satisfactoria finalizando ===");
+    }
+
+    private void scheduller() {
+        Utils.print("=== Schedulling planificado por tiempo mas corto iniciando ===");
+
+        User user = USERS_LIST.stream().filter(u -> "Santiago".equals(u.getName())).findFirst().get();
+
+        Task writeDocTask = new Task("escribir documento", 4, getResourceByName("Ram"));
+        Process writeProcess = new Process("escribir documento", Status.AVAILABLE, 4, Arrays.asList(writeDocTask), Permissions.WRITE);
+
+        Task saveAsDocTask = new Task("guardar documento", 3, getResourceByName("Hdd"));
+        Task showWindowTask = new Task("mostrando pantalla guardar como", 2, getResourceByName("Ram"));
+        Process saveAsProcess = new Process("Guardar como", Status.AVAILABLE, 5, Arrays.asList(saveAsDocTask, showWindowTask), Permissions.WRITE);
+
+        Program notepadProgram = new Program("Bloc de notas", Arrays.asList(writeProcess, saveAsProcess));
+
+        if (validatePermissions(writeProcess, notepadProgram, user) && validatePermissions(saveAsProcess, notepadProgram, user)) {
+            writeProcess.sortTaskListByExecutionTime();
+            saveAsProcess.sortTaskListByExecutionTime();
+
+            writeProcess.run(user);
+            notifyExecutionStatus(writeProcess, writeProcess.getTaskById(0), true, user);
+
+            executeTask(user, writeProcess, 0);
+
+            giveBackResource(writeProcess, writeProcess.getTaskById(0));
+
+            saveAsProcess.run(user);
+            notifyExecutionStatus(saveAsProcess, saveAsProcess.getTaskById(0), true, user);
+
+            executeTask(user, writeProcess, 0);
+
+            giveBackResource(saveAsProcess, saveAsProcess.getTaskById(0));
+
+            notifyExecutionStatus(saveAsProcess, saveAsProcess.getTaskById(1), true, user);
+
+            executeTask(user, saveAsProcess, 1);
+
+            giveBackResource(saveAsProcess, saveAsProcess.getTaskById(1));
+
+            saveAsProcess.giveBackResource();
+            saveAsProcess.terminate();
+            notifyExecutionStatus(saveAsProcess, saveAsProcess.getTaskById(1), false, user);
+
+
+        } else {
+            killProcess(writeProcess, writeDocTask, "Permisos");
+            killProcess(saveAsProcess, showWindowTask, "Permisos");
+        }
+
+        Utils.print("=== Schedulling planificado por tiempo mas corto finalizando ===");
     }
 
     private void timeoutExecution() {
@@ -272,14 +326,14 @@ public class Sistema {
             videoPlayerProcess.run(user);
             notifyExecutionStatus(videoPlayerProcess, videoPlayerProcess.getTaskById(0), true, user);
 
-            executeTask(user, videoPlayerProcess, getResourceByName("Ram"), 0);
+            executeTask(user, videoPlayerProcess, 0);
 
             giveBackResource(videoPlayerProcess, videoPlayerProcess.getTaskById(0));
 
-            executeTask(user, videoPlayerProcess, getResourceByName("Printer"), 1);
+            executeTask(user, videoPlayerProcess, 1);
 
             videoPlayerProcess.setAvailableTimeout(videoPlayerProcess.getExecutionTimeout());
-            executeTask(user, videoPlayerProcess, getResourceByName("Printer"), 1);
+            executeTask(user, videoPlayerProcess, 1);
 
             if (videoPlayerProcess.getActualResource() != null) {
                 videoPlayerProcess.getActualResource().setStatus(Status.AVAILABLE);
@@ -294,7 +348,7 @@ public class Sistema {
         Utils.print("=== Timeout finalizando ===");
     }
 
-    private void executeTask(User user, Process process, Resource resource, Integer taskId) {
+    private void executeTask(User user, Process process, Integer taskId) {
         if (isTimeExceeded(process, process.getTaskById(taskId))) {
             if (askAndGivePermissionResource(user, process, process.getTaskById(taskId))) {
                 process.setActualResource(process.getTaskById(taskId).getResource());

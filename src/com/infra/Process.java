@@ -1,6 +1,7 @@
 package com.infra;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -128,6 +129,10 @@ public class Process {
 
     public void giveBackResource() {
         this.setActualResource(null);
+    }
+
+    public void sortTaskListByExecutionTime(){
+        this.taskList.sort(Comparator.comparing(Task::getExecutionTime));
     }
 
 }
